@@ -1,8 +1,8 @@
 package com.github.reviversmc.modern_glass_doors.blocks;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.DoorBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.state.BlockState;
 
 public class GlassDoorBlock extends DoorBlock {
 	public static BlockState copyState(BlockState state) {
@@ -12,10 +12,10 @@ public class GlassDoorBlock extends DoorBlock {
 
 		for (GlassDoorBlock door : ModernGlassDoorsBlocks.GLASS_DOORS) {
 			if (door.getParentDoorType().equals(state.getBlock())) {
-				return door.getDefaultState()
-						.with(DoorBlock.FACING, state.get(DoorBlock.FACING))
-						.with(DoorBlock.HINGE, state.get(DoorBlock.HINGE))
-						.with(DoorBlock.OPEN, state.get(DoorBlock.OPEN));
+				return door.defaultBlockState()
+						.setValue(DoorBlock.FACING, state.getValue(DoorBlock.FACING))
+						.setValue(DoorBlock.HINGE, state.getValue(DoorBlock.HINGE))
+						.setValue(DoorBlock.OPEN, state.getValue(DoorBlock.OPEN));
 			}
 		}
 
@@ -26,7 +26,7 @@ public class GlassDoorBlock extends DoorBlock {
 	public final DoorBlock parentDoorType;
 
 	GlassDoorBlock(MaterialCategory materialCategory, DoorBlock parentDoorType) {
-		super(parentDoorType.blockSetType, Block.Settings.copy(parentDoorType));
+		super(parentDoorType.type(), Block.Properties.ofFullCopy(parentDoorType));
 
 		this.materialCategory = materialCategory;
 		this.parentDoorType = (DoorBlock) parentDoorType;

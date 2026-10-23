@@ -12,5 +12,6 @@ public class ModernGlassDoorsDatagen implements DataGeneratorEntrypoint {
 		pack.addProvider(ModernGlassDoorsItemTagProvider::new);
 		pack.addProvider(ModernGlassDoorsRecipeProvider::new);
 		pack.addProvider(ModernGlassDoorsModelProvider::new);
+		pack.addProvider(ModernGlassDoorsLanguageProvider::new);
 	}
 }

@@ -1,0 +1,19 @@
+{
+	"schemaVersion": 1,
+	"id": "modern_glass_doors_gametest",
+	"version": "1.0.0",
+	"name": "Modern Glass Doors Gametest",
+	"description": "Headless client checks for Modern Glass Doors.",
+	"license": "MIT",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-client-gametest": [
+			"com.github.reviversmc.modern_glass_doors.gametest.ModernGlassDoorsClientGameTest"
+		]
+	},
+	"depends": {
+		"fabricloader": "*",
+		"minecraft": "*",
+		"modern_glass_doors": "*"
+	}
+}

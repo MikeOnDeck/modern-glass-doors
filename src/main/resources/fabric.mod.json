@@ -35,6 +35,9 @@
 		],
 		"client": [
 			"com.github.reviversmc.modern_glass_doors.ModernGlassDoorsClient"
+		],
+		"fabric-datagen": [
+			"com.github.reviversmc.modern_glass_doors.datagen.ModernGlassDoorsDatagen"
 		]
 	},
 	"depends": {

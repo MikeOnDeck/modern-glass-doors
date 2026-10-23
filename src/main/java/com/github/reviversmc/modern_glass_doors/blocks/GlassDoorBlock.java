@@ -1,7 +1,7 @@
 package com.github.reviversmc.modern_glass_doors.blocks;
 
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class GlassDoorBlock extends DoorBlock {
@@ -15,7 +15,9 @@ public class GlassDoorBlock extends DoorBlock {
 				return door.defaultBlockState()
 						.setValue(DoorBlock.FACING, state.getValue(DoorBlock.FACING))
 						.setValue(DoorBlock.HINGE, state.getValue(DoorBlock.HINGE))
-						.setValue(DoorBlock.OPEN, state.getValue(DoorBlock.OPEN));
+						.setValue(DoorBlock.OPEN, state.getValue(DoorBlock.OPEN))
+						.setValue(DoorBlock.POWERED, state.getValue(DoorBlock.POWERED))
+						.setValue(DoorBlock.HALF, state.getValue(DoorBlock.HALF));
 			}
 		}
 
@@ -25,11 +27,11 @@ public class GlassDoorBlock extends DoorBlock {
 	public final MaterialCategory materialCategory;
 	public final DoorBlock parentDoorType;
 
-	GlassDoorBlock(MaterialCategory materialCategory, DoorBlock parentDoorType) {
-		super(parentDoorType.type(), Block.Properties.ofFullCopy(parentDoorType));
+	GlassDoorBlock(MaterialCategory materialCategory, DoorBlock parentDoorType, BlockBehaviour.Properties properties) {
+		super(parentDoorType.type(), properties);
 
 		this.materialCategory = materialCategory;
-		this.parentDoorType = (DoorBlock) parentDoorType;
+		this.parentDoorType = parentDoorType;
 	}
 
 	public MaterialCategory getMaterialCategory() {

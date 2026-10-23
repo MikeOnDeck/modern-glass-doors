@@ -17,8 +17,8 @@
 	],
 	"contact": {
 		"homepage": "https://www.curseforge.com/minecraft/mc-mods/modern-glass-doors",
-		"issues": "https://github.com/ReviversMC/modern-glass-doors/issues",
-		"sources": "https://github.com/ReviversMC/modern-glass-doors"
+		"issues": "https://github.com/MikeOnDeck/modern-glass-doors/issues",
+		"sources": "https://github.com/MikeOnDeck/modern-glass-doors"
 	},
 	"license": "MIT",
 	"icon": "assets/modern_glass_doors/icon.png",
@@ -30,19 +30,17 @@
 		}
 	],
 	"entrypoints": {
-		"fabric-datagen": [
-			"com.github.reviversmc.modern_glass_doors.datagen.ModernGlassDoorsDatagen"
-		],
 		"main": [
 			"com.github.reviversmc.modern_glass_doors.ModernGlassDoors"
 		],
-		"client" : [
+		"client": [
 			"com.github.reviversmc.modern_glass_doors.ModernGlassDoorsClient"
 		]
 	},
 	"depends": {
-		"minecraft": ">=1.20.3",
-		"fabric-item-group-api-v1": "*",
-		"fabric-blockrenderlayer-v1": "*"
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabricloader": ">=0.19.5",
+		"fabric-api": "*"
 	}
 }

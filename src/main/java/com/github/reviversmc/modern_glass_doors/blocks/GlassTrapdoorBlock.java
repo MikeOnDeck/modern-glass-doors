@@ -1,23 +1,23 @@
 package com.github.reviversmc.modern_glass_doors.blocks;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.TrapdoorBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.state.BlockState;
 
-public class GlassTrapdoorBlock extends TrapdoorBlock {
+public class GlassTrapdoorBlock extends TrapDoorBlock {
 	public static BlockState copyState(BlockState state) {
-		if (!(state.getBlock() instanceof TrapdoorBlock)) {
+		if (!(state.getBlock() instanceof TrapDoorBlock)) {
 			return state;
 		}
 
 		for (GlassTrapdoorBlock trapdoor : ModernGlassDoorsBlocks.GLASS_TRAPDOORS) {
 			if (trapdoor.getParentTrapdoorType().equals(state.getBlock())) {
-				return trapdoor.getDefaultState()
-						.with(TrapdoorBlock.FACING, state.get(TrapdoorBlock.FACING))
-						.with(TrapdoorBlock.OPEN, state.get(TrapdoorBlock.OPEN))
-						.with(TrapdoorBlock.HALF, state.get(TrapdoorBlock.HALF))
-						.with(TrapdoorBlock.POWERED, state.get(TrapdoorBlock.POWERED))
-						.with(TrapdoorBlock.WATERLOGGED, state.get(TrapdoorBlock.WATERLOGGED));
+				return trapdoor.defaultBlockState()
+						.setValue(TrapDoorBlock.FACING, state.getValue(TrapDoorBlock.FACING))
+						.setValue(TrapDoorBlock.OPEN, state.getValue(TrapDoorBlock.OPEN))
+						.setValue(TrapDoorBlock.HALF, state.getValue(TrapDoorBlock.HALF))
+						.setValue(TrapDoorBlock.POWERED, state.getValue(TrapDoorBlock.POWERED))
+						.setValue(TrapDoorBlock.WATERLOGGED, state.getValue(TrapDoorBlock.WATERLOGGED));
 			}
 		}
 
@@ -25,20 +25,20 @@ public class GlassTrapdoorBlock extends TrapdoorBlock {
 	}
 
 	private final MaterialCategory materialCategory;
-	private final TrapdoorBlock parentTrapdoorType;
+	private final TrapDoorBlock parentTrapdoorType;
 
-	GlassTrapdoorBlock(MaterialCategory materialCategory, TrapdoorBlock parentTrapdoorType) {
-		super(parentTrapdoorType.blockSetType, Block.Settings.copy(parentTrapdoorType));
+	GlassTrapdoorBlock(MaterialCategory materialCategory, TrapDoorBlock parentTrapdoorType) {
+		super(parentTrapdoorType.type, Block.Properties.ofFullCopy(parentTrapdoorType));
 
 		this.materialCategory = materialCategory;
-		this.parentTrapdoorType = (TrapdoorBlock) parentTrapdoorType;
+		this.parentTrapdoorType = (TrapDoorBlock) parentTrapdoorType;
 	}
 
 	public MaterialCategory getMaterialCategory() {
 		return materialCategory;
 	}
 
-	public TrapdoorBlock getParentTrapdoorType() {
+	public TrapDoorBlock getParentTrapdoorType() {
 		return parentTrapdoorType;
 	}
 }

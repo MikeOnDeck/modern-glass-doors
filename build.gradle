@@ -1,5 +1,5 @@
 plugins {
-	id 'fabric-loom'
+	id 'fabric-loom' version "${loom_version}"
 	id 'checkstyle'
 }
 
@@ -43,15 +43,11 @@ repositories {
 
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	mappings loom.officialMojangMappings()
 
-	modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-	// Required Fabric API modules
-	modImplementation(fabricApi.module('fabric-api-base', project.fabric_api_version))
-	modImplementation(fabricApi.module('fabric-item-group-api-v1', project.fabric_api_version))
-	modImplementation(fabricApi.module('fabric-blockrenderlayer-v1', project.fabric_api_version))
-	modImplementation(fabricApi.module('fabric-data-generation-api-v1', project.fabric_api_version))
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
 	// Vineflower
 	vineflowerDecompilerClasspath "org.vineflower:vineflower:1.9.3"
@@ -97,6 +93,10 @@ loom {
 // Add previously datagenned files into the JAR
 sourceSets {
 	main {
+		java {
+			// Datagen providers are updated in #7; excluded until the 1.21.11 API port.
+			exclude 'com/github/reviversmc/modern_glass_doors/datagen/**'
+		}
 		resources {
 			srcDirs += [
 				'src/main/resources_generated'
@@ -124,13 +124,12 @@ tasks.withType(JavaCompile).configureEach {
 	// If Javadoc is generated, this must be specified in that task too.
 	it.options.encoding = 'UTF-8'
 
-	// Minecraft 1.18-pre2 upwards uses Java 17.
-	it.options.release = 17
+	it.options.release = 21
 }
 
 java {
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
 
 	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
 	// if it is present. If you remove this line, sources will not be generated.

@@ -1,7 +1,7 @@
 {
   "required": true,
   "package": "com.github.reviversmc.modern_glass_doors.mixin",
-  "compatibilityLevel": "JAVA_17",
+  "compatibilityLevel": "JAVA_21",
   "mixins": [
     "DoorBlockMixin",
     "TrapdoorBlockMixin",

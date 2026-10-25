@@ -1,7 +1,7 @@
 package com.github.reviversmc.modern_glass_doors.blocks;
 
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class GlassTrapdoorBlock extends TrapDoorBlock {
@@ -27,11 +27,11 @@ public class GlassTrapdoorBlock extends TrapDoorBlock {
 	private final MaterialCategory materialCategory;
 	private final TrapDoorBlock parentTrapdoorType;
 
-	GlassTrapdoorBlock(MaterialCategory materialCategory, TrapDoorBlock parentTrapdoorType) {
-		super(parentTrapdoorType.type, Block.Properties.ofFullCopy(parentTrapdoorType));
+	GlassTrapdoorBlock(MaterialCategory materialCategory, TrapDoorBlock parentTrapdoorType, BlockBehaviour.Properties properties) {
+		super(parentTrapdoorType.type, properties);
 
 		this.materialCategory = materialCategory;
-		this.parentTrapdoorType = (TrapDoorBlock) parentTrapdoorType;
+		this.parentTrapdoorType = parentTrapdoorType;
 	}
 
 	public MaterialCategory getMaterialCategory() {

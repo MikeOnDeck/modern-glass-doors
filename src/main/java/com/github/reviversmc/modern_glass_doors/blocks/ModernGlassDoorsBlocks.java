@@ -3,10 +3,13 @@ package com.github.reviversmc.modern_glass_doors.blocks;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.fabricmc.fabric.api.event.registry.FabricRegistry;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.DoubleHighBlockItem;
 import net.minecraft.world.item.Item;
@@ -14,10 +17,13 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 
 import com.github.reviversmc.modern_glass_doors.ModernGlassDoors;
 
 public class ModernGlassDoorsBlocks {
+	private static final String LEGACY_NAMESPACE = "glassdoor";
+
 	public static final List<GlassDoorBlock> GLASS_DOORS = new ArrayList<>();
 	public static final List<GlassTrapdoorBlock> GLASS_TRAPDOORS = new ArrayList<>();
 
@@ -77,36 +83,63 @@ public class ModernGlassDoorsBlocks {
 		MANGROVE_GLASS_TRAPDOOR = registerTrapdoor("mangrove", MaterialCategory.WOOD, Blocks.MANGROVE_TRAPDOOR);
 		BAMBOO_GLASS_TRAPDOOR = registerTrapdoor("bamboo", MaterialCategory.WOOD, Blocks.BAMBOO_TRAPDOOR);
 		CHERRY_GLASS_TRAPDOOR = registerTrapdoor("cherry", MaterialCategory.WOOD, Blocks.CHERRY_TRAPDOOR);
+
+		registerLegacyAliases();
 	}
 
 	private static Block registerDoor(String material, MaterialCategory materialCategory, Block parentDoorType) {
-		assert parentDoorType instanceof DoorBlock;
+		if (!(parentDoorType instanceof DoorBlock parentDoor)) {
+			throw new IllegalArgumentException(material);
+		}
 
-		GlassDoorBlock door = new GlassDoorBlock(materialCategory, (DoorBlock) parentDoorType);
-		// TODO(#3): set registry keys on block/item properties before construction (1.21.2+).
 		Identifier id = Identifier.fromNamespaceAndPath(ModernGlassDoors.MOD_ID, material + "_glass_door");
+		ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);
+		ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, id);
+		GlassDoorBlock door = new GlassDoorBlock(materialCategory, parentDoor, BlockBehaviour.Properties.ofFullCopy(parentDoor).setId(blockKey));
 
 		GLASS_DOORS.add(door);
-		Registry.register(BuiltInRegistries.BLOCK, id, door);
-		Registry.register(BuiltInRegistries.ITEM, id, new DoubleHighBlockItem(door, new Item.Properties()));
-		ItemGroupEvents.modifyEntriesEvent(ModernGlassDoors.ITEM_GROUP)
-				.register(entries -> entries.accept(door));
-
+		Registry.register(BuiltInRegistries.BLOCK, blockKey, door);
+		Registry.register(BuiltInRegistries.ITEM, itemKey, new DoubleHighBlockItem(door, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
+		ItemGroupEvents.modifyEntriesEvent(ModernGlassDoors.ITEM_GROUP).register(entries -> entries.accept(door));
 		return door;
 	}
 
 	private static Block registerTrapdoor(String material, MaterialCategory materialCategory, Block parentTrapdoorType) {
-		assert parentTrapdoorType instanceof TrapDoorBlock;
+		if (!(parentTrapdoorType instanceof TrapDoorBlock parentTrapdoor)) {
+			throw new IllegalArgumentException(material);
+		}
 
-		GlassTrapdoorBlock trapdoor = new GlassTrapdoorBlock(materialCategory, (TrapDoorBlock) parentTrapdoorType);
 		Identifier id = Identifier.fromNamespaceAndPath(ModernGlassDoors.MOD_ID, material + "_glass_trapdoor");
+		ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);
+		ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, id);
+		GlassTrapdoorBlock trapdoor = new GlassTrapdoorBlock(materialCategory, parentTrapdoor, BlockBehaviour.Properties.ofFullCopy(parentTrapdoor).setId(blockKey));
 
 		GLASS_TRAPDOORS.add(trapdoor);
-		Registry.register(BuiltInRegistries.BLOCK, id, trapdoor);
-		Registry.register(BuiltInRegistries.ITEM, id, new BlockItem(trapdoor, new Item.Properties()));
-		ItemGroupEvents.modifyEntriesEvent(ModernGlassDoors.ITEM_GROUP)
-				.register(entries -> entries.accept(trapdoor));
-
+		Registry.register(BuiltInRegistries.BLOCK, blockKey, trapdoor);
+		Registry.register(BuiltInRegistries.ITEM, itemKey, new BlockItem(trapdoor, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
+		ItemGroupEvents.modifyEntriesEvent(ModernGlassDoors.ITEM_GROUP).register(entries -> entries.accept(trapdoor));
 		return trapdoor;
+	}
+
+	/**
+	 * Maps predecessor {@code glassdoor} ids onto the 5.3.0 ids via Fabric registry aliases.
+	 */
+	private static void registerLegacyAliases() {
+		for (Block door : GLASS_DOORS) {
+			registerGlassdoorAlias(BuiltInRegistries.BLOCK, BuiltInRegistries.BLOCK.getKey(door), "_glass_door", "_glassdoor");
+			registerGlassdoorAlias(BuiltInRegistries.ITEM, BuiltInRegistries.ITEM.getKey(door.asItem()), "_glass_door", "_glassdoor");
+		}
+
+		for (Block trapdoor : GLASS_TRAPDOORS) {
+			registerGlassdoorAlias(BuiltInRegistries.BLOCK, BuiltInRegistries.BLOCK.getKey(trapdoor), "_glass_trapdoor", "_glasstrapdoor");
+			registerGlassdoorAlias(BuiltInRegistries.ITEM, BuiltInRegistries.ITEM.getKey(trapdoor.asItem()), "_glass_trapdoor", "_glasstrapdoor");
+		}
+	}
+
+	private static void registerGlassdoorAlias(Registry<?> registry, Identifier currentId, String currentSuffix, String legacySuffix) {
+		FabricRegistry fabricRegistry = (FabricRegistry) registry;
+		String path = currentId.getPath();
+		fabricRegistry.addAlias(Identifier.fromNamespaceAndPath(LEGACY_NAMESPACE, path.replace(currentSuffix, legacySuffix)), currentId);
+		fabricRegistry.addAlias(Identifier.fromNamespaceAndPath(LEGACY_NAMESPACE, path), currentId);
 	}
 }

@@ -4,8 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "DoorBlockMixin",
-    "TrapdoorBlockMixin",
-    "DefaultedRegistryMixin"
+    "TrapdoorBlockMixin"
   ],
   "injectors": {
     "defaultRequire": 1

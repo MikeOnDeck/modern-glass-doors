@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: "21"
           distribution: "temurin"
@@ -25,13 +25,53 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Validate Gradle wrapper
-        uses: gradle/wrapper-validation-action@v2
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Ensure generated data is not committed
+        run: |
+          if [ -d src/main/resources_generated ]; then
+            echo "src/main/resources_generated must not be committed"
+            exit 1
+          fi
+          if git ls-files -- "src/main/resources_generated/**" | grep -q .; then
+            echo "src/main/resources_generated must not be committed"
+            exit 1
+          fi
+
+      - name: Run Datagen
+        run: ./gradlew runDatagen --stacktrace
+
+      - name: Check datagen output
+        run: |
+          set -euo pipefail
+          test -d src/main/resources_generated/.cache
+          test -d src/main/resources_generated/assets/modern_glass_doors/items
+          test -d src/main/resources_generated/assets/modern_glass_doors/blockstates
+          test -d src/main/resources_generated/assets/modern_glass_doors/models
+          test -d src/main/resources_generated/assets/modern_glass_doors/lang
+          test -d src/main/resources_generated/data/modern_glass_doors/loot_table
+          test -d src/main/resources_generated/data/modern_glass_doors/recipe
+          test -d src/main/resources_generated/data/modern_glass_doors/tags/block
+          test -f src/main/resources_generated/data/minecraft/tags/item/doors.json
+          test -f src/main/resources_generated/data/minecraft/tags/item/trapdoors.json
+          test -f src/main/resources_generated/data/minecraft/tags/item/wooden_doors.json
+          test -f src/main/resources_generated/data/minecraft/tags/item/wooden_trapdoors.json
+          test -f src/main/resources_generated/data/minecraft/tags/item/non_flammable_wood.json
+          test -f src/main/resources_generated/data/minecraft/tags/block/mineable/axe.json
+          test -f src/main/resources_generated/data/minecraft/tags/block/mineable/pickaxe.json
+          test -f src/main/resources_generated/data/c/tags/block/metal_doors.json
+          test -f src/main/resources_generated/data/c/tags/block/metal_trapdoors.json
+          item_models="$(find src/main/resources_generated/assets/modern_glass_doors/items -name '*.json' | wc -l)"
+          test "$item_models" -eq 24
+          cp -a src/main/resources_generated /tmp/datagen-first
+          ./gradlew runDatagen --stacktrace
+          diff -ru --exclude=.cache /tmp/datagen-first src/main/resources_generated
 
       - name: Build the mod
         run: ./gradlew build --stacktrace
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-artifacts
           path: build/libs

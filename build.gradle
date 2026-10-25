@@ -77,15 +77,28 @@ loom {
 	accessWidenerPath = file("src/main/resources/modern_glass_doors.accesswidener")
 	runs {
 		// This adds a new Gradle task that runs the Datagen API: `./gradlew runDatagen`
+		// Client inheritance is required for the 1.21.4+ item model definitions.
 		datagen {
-			inherit server
+			inherit client
 
 			name 'Data Generation'
 			runDir 'build/datagen'
 
 			vmArg '-Dfabric-api.datagen'
+			vmArg '-Dfabric-api.datagen.modid=modern_glass_doors'
 			vmArg "-Dfabric-api.datagen.output-dir=${file("src/main/resources_generated")}"
 		}
+	}
+}
+
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = 'modern_glass_doors_gametest'
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = true
+		clearRunDirectory = true
 	}
 }
 
@@ -93,10 +106,6 @@ loom {
 // Add previously datagenned files into the JAR
 sourceSets {
 	main {
-		java {
-			// Datagen providers are updated in #7; excluded until the 1.21.11 API port.
-			exclude 'com/github/reviversmc/modern_glass_doors/datagen/**'
-		}
 		resources {
 			srcDirs += [
 				'src/main/resources_generated'

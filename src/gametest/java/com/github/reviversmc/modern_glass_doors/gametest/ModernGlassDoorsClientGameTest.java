@@ -26,11 +26,17 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ButtonBlock;
 import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.LeverBlock;
+import net.minecraft.world.level.block.PressurePlateBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.level.block.state.properties.DoorHingeSide;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.Half;
@@ -71,6 +77,14 @@ public class ModernGlassDoorsClientGameTest implements FabricClientGameTest {
 				shootDoorConversion(context, world, scene);
 				shootTrapdoorConversion(context, world, scene);
 				shootRedstone(context, world, scene);
+				assertHandDoors(world, scene);
+				shootHandDoors(context, world, scene);
+				assertRedstoneComponents(world, scene);
+				shootRedstoneWood(context, world, scene);
+				assertTrapdoorHalves(world, scene);
+				shootTrapdoorHalves(context, world, scene);
+				assertSurvivalPlacement(world, scene);
+				assertLootDrops(world, scene);
 				shootWater(context, world, scene);
 				assertOffhandAndCreative(world, scene);
 				assertAliases(world);
@@ -80,6 +94,10 @@ public class ModernGlassDoorsClientGameTest implements FabricClientGameTest {
 			try (TestDedicatedServerContext server = context.worldBuilder().createServer()) {
 				try (TestServerConnection connection = server.connect()) {
 					connection.getClientWorld().waitForChunksRender(20 * 60 * 3);
+					setHud(context, false);
+					context.runOnClient(client -> client.options.hideGui = false);
+					context.waitTicks(20);
+					shot(context, "dedicated-server-joined");
 					server.computeOnServer(minecraftServer -> {
 						Block block = BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath("glassdoor", "oak_glassdoor"));
 
@@ -207,6 +225,263 @@ public class ModernGlassDoorsClientGameTest implements FabricClientGameTest {
 		setHud(context, false);
 		lookAt(context, world, lower.getX() - 3.5, scene.ground + 1, lower.getZ() + 0.5, -90.0F, 0.0F);
 		shot(context, "redstone-iron-glass-door");
+	}
+
+	private static void assertHandDoors(TestSingleplayerContext world, Scene scene) {
+		BlockPos oakLower = new BlockPos(scene.originX + 64, scene.ground + 1, scene.doorZ);
+		BlockPos ironLower = oakLower.east(4);
+		world.getServer().runOnServer(server -> {
+			ServerLevel level = server.overworld();
+			ServerPlayer serverPlayer = player(server.getPlayerList().getPlayers());
+			placeDoor(level, oakLower, ModernGlassDoorsBlocks.OAK_GLASS_DOOR, false);
+			placeDoor(level, ironLower, ModernGlassDoorsBlocks.IRON_GLASS_DOOR, false);
+			toggleDoor(level, serverPlayer, oakLower);
+
+			BlockState oakState = level.getBlockState(oakLower);
+
+			if (!oakState.getValue(DoorBlock.OPEN)) {
+				throw new IllegalStateException("Oak glass door did not open by hand: " + oakState);
+			}
+
+			toggleDoor(level, serverPlayer, oakLower);
+
+			if (level.getBlockState(oakLower).getValue(DoorBlock.OPEN)) {
+				throw new IllegalStateException("Oak glass door did not close by hand");
+			}
+
+			toggleDoor(level, serverPlayer, ironLower);
+
+			if (level.getBlockState(ironLower).getValue(DoorBlock.OPEN)) {
+				throw new IllegalStateException("Iron glass door opened by hand");
+			}
+		});
+	}
+
+	private static void shootHandDoors(ClientGameTestContext context, TestSingleplayerContext world, Scene scene) {
+		BlockPos oakLower = new BlockPos(scene.originX + 64, scene.ground + 1, scene.doorZ);
+		world.getServer().runOnServer(server -> {
+			ServerLevel level = server.overworld();
+			placeDoor(level, oakLower, ModernGlassDoorsBlocks.OAK_GLASS_DOOR, true);
+			placeDoor(level, oakLower.east(2), ModernGlassDoorsBlocks.CRIMSON_GLASS_DOOR, true);
+		});
+		setHud(context, false);
+		lookAt(context, world, oakLower.getX() + 1.5, scene.ground + 1, oakLower.getZ() + 4, 180.0F, 0.0F);
+		shot(context, "hand-toggle-wood-doors");
+	}
+
+	private static void assertRedstoneComponents(TestSingleplayerContext world, Scene scene) {
+		BlockPos lower = new BlockPos(scene.originX + 72, scene.ground + 1, scene.doorZ);
+		world.getServer().runOnServer(server -> {
+			ServerLevel level = server.overworld();
+			ServerPlayer serverPlayer = player(server.getPlayerList().getPlayers());
+			placeDoor(level, lower, ModernGlassDoorsBlocks.SPRUCE_GLASS_DOOR, false);
+			expectRedstoneOpensDoor(level, serverPlayer, lower, lower.east(), Blocks.STONE_BUTTON, "button");
+			placeDoor(level, lower, ModernGlassDoorsBlocks.SPRUCE_GLASS_DOOR, false);
+			expectRedstoneOpensDoor(level, serverPlayer, lower, lower.east(), Blocks.LEVER, "lever");
+			placeDoor(level, lower, ModernGlassDoorsBlocks.SPRUCE_GLASS_DOOR, false);
+			expectRedstoneOpensDoor(level, serverPlayer, lower, lower.south(), Blocks.OAK_PRESSURE_PLATE, "pressure-plate");
+		});
+	}
+
+	private static void expectRedstoneOpensDoor(ServerLevel level, ServerPlayer player, BlockPos lower, BlockPos componentPos, Block component, String label) {
+		level.setBlock(componentPos.below(), Blocks.COBBLESTONE.defaultBlockState(), Block.UPDATE_ALL);
+		level.setBlock(componentPos, component.defaultBlockState(), Block.UPDATE_ALL);
+
+		if (component == Blocks.STONE_BUTTON) {
+			BlockState button = level.getBlockState(componentPos);
+			level.setBlock(componentPos, button.setValue(ButtonBlock.POWERED, true), Block.UPDATE_ALL);
+		} else if (component == Blocks.LEVER) {
+			BlockState lever = level.getBlockState(componentPos);
+
+			if (!lever.getValue(LeverBlock.POWERED)) {
+				((LeverBlock) Blocks.LEVER).pull(lever, level, componentPos, player);
+			}
+		} else if (component instanceof PressurePlateBlock) {
+			level.setBlock(componentPos, component.defaultBlockState().setValue(PressurePlateBlock.POWERED, true), Block.UPDATE_ALL);
+		}
+
+		level.updateNeighborsAt(componentPos, component);
+		BlockState doorState = level.getBlockState(lower);
+
+		if (!doorState.getValue(DoorBlock.OPEN) || !doorState.getValue(DoorBlock.POWERED)) {
+			throw new IllegalStateException(label + " did not open spruce glass door: " + doorState);
+		}
+
+		if (component == Blocks.STONE_BUTTON) {
+			level.setBlock(componentPos, level.getBlockState(componentPos).setValue(ButtonBlock.POWERED, false), Block.UPDATE_ALL);
+		} else if (component == Blocks.LEVER) {
+			BlockState lever = level.getBlockState(componentPos);
+
+			if (lever.getValue(LeverBlock.POWERED)) {
+				((LeverBlock) Blocks.LEVER).pull(lever, level, componentPos, player);
+			}
+		} else if (component instanceof PressurePlateBlock) {
+			level.setBlock(componentPos, component.defaultBlockState().setValue(PressurePlateBlock.POWERED, false), Block.UPDATE_ALL);
+		}
+
+		level.updateNeighborsAt(componentPos, component);
+		doorState = level.getBlockState(lower);
+
+		if (doorState.getValue(DoorBlock.OPEN) || doorState.getValue(DoorBlock.POWERED)) {
+			throw new IllegalStateException(label + " did not close spruce glass door: " + doorState);
+		}
+
+		level.setBlock(componentPos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+		level.setBlock(componentPos.below(), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+	}
+
+	private static void shootRedstoneWood(ClientGameTestContext context, TestSingleplayerContext world, Scene scene) {
+		BlockPos lower = new BlockPos(scene.originX + 72, scene.ground + 1, scene.doorZ);
+		world.getServer().runOnServer(server -> {
+			ServerLevel level = server.overworld();
+			ServerPlayer serverPlayer = player(server.getPlayerList().getPlayers());
+			placeDoor(level, lower, ModernGlassDoorsBlocks.SPRUCE_GLASS_DOOR, false);
+			level.setBlock(lower.east(), Blocks.COBBLESTONE.defaultBlockState(), Block.UPDATE_ALL);
+			BlockState lever = Blocks.LEVER.defaultBlockState()
+					.setValue(LeverBlock.FACE, AttachFace.WALL)
+					.setValue(LeverBlock.FACING, Direction.WEST)
+					.setValue(LeverBlock.POWERED, false);
+			level.setBlock(lower.east().above(), lever, Block.UPDATE_ALL);
+			((LeverBlock) Blocks.LEVER).pull(level.getBlockState(lower.east().above()), level, lower.east().above(), serverPlayer);
+		});
+		setHud(context, false);
+		lookAt(context, world, lower.getX() + 0.5, scene.ground + 1, lower.getZ() + 4, 180.0F, 0.0F);
+		shot(context, "redstone-spruce-glass-door-lever");
+	}
+
+	private static void assertTrapdoorHalves(TestSingleplayerContext world, Scene scene) {
+		BlockPos bottomPos = new BlockPos(scene.originX + 64, scene.ground + 2, scene.trapZ);
+		BlockPos topPos = bottomPos.east(4);
+		world.getServer().runOnServer(server -> {
+			ServerLevel level = server.overworld();
+			level.setBlock(bottomPos.below(), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+			level.setBlock(topPos.below(), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+			placeTrapdoor(level, bottomPos, ModernGlassDoorsBlocks.BIRCH_GLASS_TRAPDOOR, false, false);
+			level.setBlock(topPos, ModernGlassDoorsBlocks.BIRCH_GLASS_TRAPDOOR.defaultBlockState()
+					.setValue(TrapDoorBlock.FACING, Direction.SOUTH)
+					.setValue(TrapDoorBlock.HALF, Half.TOP)
+					.setValue(TrapDoorBlock.OPEN, false)
+					.setValue(TrapDoorBlock.POWERED, false)
+					.setValue(TrapDoorBlock.WATERLOGGED, false), Block.UPDATE_ALL);
+
+			BlockState bottom = level.getBlockState(bottomPos);
+			BlockState top = level.getBlockState(topPos);
+
+			if (!bottom.is(ModernGlassDoorsBlocks.BIRCH_GLASS_TRAPDOOR) || bottom.getValue(TrapDoorBlock.HALF) != Half.BOTTOM) {
+				throw new IllegalStateException("Bottom trapdoor placement failed: " + bottom);
+			}
+
+			if (!top.is(ModernGlassDoorsBlocks.BIRCH_GLASS_TRAPDOOR) || top.getValue(TrapDoorBlock.HALF) != Half.TOP) {
+				throw new IllegalStateException("Top trapdoor placement failed: " + top);
+			}
+
+			ServerPlayer serverPlayer = player(server.getPlayerList().getPlayers());
+			toggleTrapdoor(level, serverPlayer, bottomPos);
+			toggleTrapdoor(level, serverPlayer, topPos);
+
+			if (!level.getBlockState(bottomPos).getValue(TrapDoorBlock.OPEN) || !level.getBlockState(topPos).getValue(TrapDoorBlock.OPEN)) {
+				throw new IllegalStateException("Trapdoors did not open by hand");
+			}
+		});
+	}
+
+	private static void shootTrapdoorHalves(ClientGameTestContext context, TestSingleplayerContext world, Scene scene) {
+		BlockPos bottomPos = new BlockPos(scene.originX + 64, scene.ground + 2, scene.trapZ);
+		setHud(context, false);
+		lookAt(context, world, bottomPos.getX() + 1.5, scene.ground + 1, bottomPos.getZ() + 4, 180.0F, 12.0F);
+		shot(context, "trapdoor-top-and-bottom");
+	}
+
+	private static void assertSurvivalPlacement(TestSingleplayerContext world, Scene scene) {
+		BlockPos doorPos = new BlockPos(scene.originX + 80, scene.ground + 1, scene.doorZ);
+		BlockPos trapPos = new BlockPos(scene.originX + 80, scene.ground + 2, scene.trapZ);
+		world.getServer().runOnServer(server -> {
+			ServerLevel level = server.overworld();
+			ServerPlayer serverPlayer = player(server.getPlayerList().getPlayers());
+			serverPlayer.setGameMode(GameType.SURVIVAL);
+			serverPlayer.getInventory().clearContent();
+			serverPlayer.getInventory().setItem(0, new ItemStack(ModernGlassDoorsBlocks.MANGROVE_GLASS_DOOR));
+			serverPlayer.getInventory().setItem(1, new ItemStack(ModernGlassDoorsBlocks.MANGROVE_GLASS_TRAPDOOR));
+			serverPlayer.getInventory().setSelectedSlot(0);
+			placeFromInventory(level, serverPlayer, doorPos, InteractionHand.MAIN_HAND);
+			serverPlayer.getInventory().setSelectedSlot(1);
+			level.setBlock(trapPos.below(), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+			placeFromInventory(level, serverPlayer, trapPos, InteractionHand.MAIN_HAND);
+
+			BlockState doorLower = level.getBlockState(doorPos);
+			BlockState doorUpper = level.getBlockState(doorPos.above());
+			BlockState trapdoor = level.getBlockState(trapPos);
+
+			if (!doorLower.is(ModernGlassDoorsBlocks.MANGROVE_GLASS_DOOR) || doorLower.getValue(DoorBlock.HALF) != DoubleBlockHalf.LOWER) {
+				throw new IllegalStateException("Survival door placement failed: " + doorLower);
+			}
+
+			if (!doorUpper.is(ModernGlassDoorsBlocks.MANGROVE_GLASS_DOOR) || doorUpper.getValue(DoorBlock.HALF) != DoubleBlockHalf.UPPER) {
+				throw new IllegalStateException("Survival door upper half missing: " + doorUpper);
+			}
+
+			if (!trapdoor.is(ModernGlassDoorsBlocks.MANGROVE_GLASS_TRAPDOOR)) {
+				throw new IllegalStateException("Survival trapdoor placement failed: " + trapdoor);
+			}
+
+			if (serverPlayer.getInventory().getItem(0).getCount() != 0 || serverPlayer.getInventory().getItem(1).getCount() != 0) {
+				throw new IllegalStateException("Survival placement did not consume items");
+			}
+		});
+	}
+
+	private static void assertLootDrops(TestSingleplayerContext world, Scene scene) {
+		BlockPos doorPos = new BlockPos(scene.originX + 84, scene.ground + 1, scene.doorZ);
+		BlockPos trapPos = new BlockPos(scene.originX + 84, scene.ground + 2, scene.trapZ);
+		world.getServer().runOnServer(server -> {
+			ServerLevel level = server.overworld();
+			ServerPlayer serverPlayer = player(server.getPlayerList().getPlayers());
+			serverPlayer.setGameMode(GameType.SURVIVAL);
+			serverPlayer.getInventory().clearContent();
+			placeDoor(level, doorPos, ModernGlassDoorsBlocks.CHERRY_GLASS_DOOR, false);
+			level.setBlock(trapPos.below(), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+			placeTrapdoor(level, trapPos, ModernGlassDoorsBlocks.CHERRY_GLASS_TRAPDOOR, false, false);
+			serverPlayer.getInventory().setItem(0, new ItemStack(Items.IRON_AXE));
+			serverPlayer.getInventory().setSelectedSlot(0);
+			expectBreakDrop(level, serverPlayer, trapPos, ModernGlassDoorsBlocks.CHERRY_GLASS_TRAPDOOR.asItem());
+			expectBreakDrop(level, serverPlayer, doorPos, ModernGlassDoorsBlocks.CHERRY_GLASS_DOOR.asItem());
+		});
+	}
+
+	private static void placeFromInventory(ServerLevel level, ServerPlayer player, BlockPos pos, InteractionHand hand) {
+		ItemStack stack = player.getItemInHand(hand);
+		BlockPlaceContext context = new BlockPlaceContext(new UseOnContext(level, player, hand, stack, new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false)));
+		stack.getItem().useOn(context);
+	}
+
+	private static void expectBreakDrop(ServerLevel level, ServerPlayer player, BlockPos pos, Item expected) {
+		AABB area = new AABB(pos).inflate(2);
+		level.getEntitiesOfClass(ItemEntity.class, area).forEach(ItemEntity::discard);
+		BlockState state = level.getBlockState(pos);
+
+		if (!player.gameMode.destroyBlock(pos)) {
+			throw new IllegalStateException("Could not break " + state);
+		}
+
+		List<ItemEntity> drops = level.getEntitiesOfClass(ItemEntity.class, area);
+
+		if (drops.size() != 1 || !drops.get(0).getItem().is(expected)) {
+			throw new IllegalStateException("Breaking " + state + " dropped " + drops);
+		}
+
+		drops.get(0).discard();
+	}
+
+	private static void toggleDoor(ServerLevel level, Player player, BlockPos lower) {
+		BlockState state = level.getBlockState(lower);
+		BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(lower), Direction.NORTH, lower, false);
+		state.useWithoutItem(level, player, hit);
+	}
+
+	private static void toggleTrapdoor(ServerLevel level, Player player, BlockPos pos) {
+		BlockState state = level.getBlockState(pos);
+		BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(pos), Direction.NORTH, pos, false);
+		state.useWithoutItem(level, player, hit);
 	}
 
 	private static void shootWater(ClientGameTestContext context, TestSingleplayerContext world, Scene scene) {
